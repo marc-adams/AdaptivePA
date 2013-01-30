@@ -1,0 +1,175 @@
+<script>
+// This function will become boilerplate, but it shows how the ui is
+completely controllable for the feedback/intervention
+  function createDisplay() {
+    var output = document.createElement("div");
+    output.setAttribute("id", "output");
+    document.body.appendChild(output);
+    var display = $("#output");
+    return {
+        title : function(titlemsg) {
+          display.html("<h1>"+titlemsg+"</h1>\n" + display.html());
+        },
+        add : function(msg) {
+          display.html(display.html() + "\n<p style=\"font-size:
+large;\">"+msg+"</p>");
+        }
+    };
+  };
+
+  // This function is also boilerplate that brings the data from the
+phone's datastore into the javascript environment
+  // so that is can be used to create a custom response for the user.
+  function getData() {
+        var jsondata = window.env.getValue("experimentalData");
+        var experimentData = $.parseJSON(jsondata);
+        if (!experimentData) {
+          // hack for samsung tmobile phones
+          experimentData = eval('(' + jsondata + ')');
+        }
+        return experimentData;
+  };
+
+  // This is a function to compute the average value of the numerical
+response, "item", over the last "numPast" responses.
+  // This shows that we can create custom functions for analysing the
+data which is stored in an environmental variable, "experimentData".
+  function averageOfLastNResponses(experimentData, item, numPast) {
+     var total = 0;
+     var count = numPast;
+     if (count > experimentData.length) {
+       count = experimentData.length;
+     }
+     for (var i = 0; i < count; i++) {
+        for (var j =0 ; j < experimentData[i].responses.length; j++) {
+          if (experimentData[i].responses[j]["inputName"] === item) {
+            total = total + parseInt(experimentData[i].responses[j]["answer"]);
+            break;
+          }
+        }
+     }
+    if (count > 0) {
+     return total / count;
+    } else {
+      return 0;
+    }
+  };
+
+  // This is the key function for showing feedback predicated on their responses
+  function computeFeedback(averageResponse) {
+      if (averageResponse > 4) {
+        return "You've really been keeping up a great pattern!";
+      } else if (averageResponse < 2) {
+        return "This hasn't taken off yet. No where to go but up!";
+      } else {
+        return "Keep Going! You're doing great.";
+      }
+  };
+
+  // This is the main part of the script that creates the display,
+gets the data, and
+  // shows conditional feedback based on analysis.
+  function main() {
+    var experimentData = getData();
+    var display = createDisplay();
+
+    display.title("Your Progress Report");
+
+    if (experimentData === undefined || experimentData.length == 0) {
+      display.add("No responses yet to give feedback on");
+    } else {
+      var averageResponse = averageOfLastNResponses(experimentData,
+"alertness", 3);
+      var intervention = computeFeedback(averageResponse);
+
+      display.add(intervention);
+      display.add("Average of last 3 responses: " + averageAnswer);
+    }
+  };
+  main();
+
+</script>
+
+
+Example 2: Output that sums up and weights responses.
+This example was used by the author of the Discover article on Paco.
+It asks about incidence of sneezing attacks after eating. It then
+shows a chart with the foods eaten when sneezing was reported with a
+weighted score based on frequency and intensity of sneezing.
+
+  <script>
+  // This is another javascript idiom for wrapping a set of functions.
+  // This is written as one long script instead of a bunch of smaller functions.
+  $(function() {
+
+    String.prototype.trim = function() {
+      return this.replace(/^\s+|\s+$/g,"");
+    }
+
+    function dateString(d){
+      function pad(n){
+        return n<10 ? '0'+n : n;
+      }
+
+      return pad(d.getMonth()+1)+'/'
+        + pad(d.getDate()) + '/'
+        + String(d.getFullYear()).slice(2)
+     }
+
+     var expdata = window.env.getValue("experimentalData");
+     expdata = eval('('+ expdata + ')');
+
+      if (!expdata) {
+        alert("No Data");
+        return;
+      }
+      expdata = expdata.sort(function(a,b) {
+        return a.responseTime - b.responseTime;
+      });
+
+// iterate over all the responses.
+// for responses where 'Sneeze' was true, collect the 'Food' that was
+eaten and the 'Severity' of the sneezing.
+// Add up the severity of sneezing for each food to get a cumulative
+sneeze incidence.
+var foods = {};
+for (var j=0;j < expdata.length;j++) {
+            var sneezed = false;
+            var food;
+            var severity = 1;
+            for (var i=0;i < expdata[j].responses.length;i++) {
+              var response = expdata[j].responses[i];
+              if (response.inputName == 'Sneeze' && response.answerOrder == 2) {
+                sneezed = true;
+              }
+              if (response.inputName == 'Food') {
+                food = response.answer.trim();
+              }
+              if (response.inputName == 'Severity' &&
+response.inputName != null && response.inputName.length > 0) {
+                severity = response.answerOrder;
+              }
+            }
+            if (sneezed) {
+              foods[food] = (foods[food] || parseInt(0)) + parseInt(severity);
+            }
+}
+var foodlist = "<h1>Sneezy
+Foods</h1><table><tr><th>Food</th><th>Severity count</th></tr>";
+
+for (var f in foods) {
+   foodlist += "<tr><td>" + f + "</td><td>" + foods[f] + "</td></tr>";
+}
+foodlist += "</table>";
+$("#placeholder").html(foodlist);
+    });
+</script>
+  <h2>
+  Thanks for Participating!
+</h2>
+  <div id="placeholder" ></div>
+  <br>
+  <h2>
+  Other Information
+</h2>
+  <div id="responses"></div>
